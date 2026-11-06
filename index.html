@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Triagem Agêntica</title>
+<meta name="description" content="Instrumento aberto de triagem de demandas de IA generativa: que nível de autonomia o problema exige (L0 a L4) e como construir. Uma página, sem cadastro, sem servidor.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Triagem Agêntica — quando a demanda precisa mesmo de um agente">
+<meta property="og:description" content="Instrumento aberto de triagem de demandas de IA generativa: que nível de autonomia o problema exige (L0 a L4) e como construir. Uma página, sem cadastro, sem servidor.">
+<meta property="og:image" content="https://hpesanto.github.io/triagem-agentica/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+/* base equivalente ao que a plataforma de artefatos injeta */
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{margin:0}
+body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: três estações numeradas descendo uma espinha; o veredito acumula numa barra fixa no topo. */
+:root{
+  --bg:#f5f6f9; --surface:#ffffff; --surface-2:#eceff5; --line:#d6dae3; --line-strong:#aeb5c4;
+  --fg:#1a1d26; --fg-dim:#5b6373; --fg-faint:#8a92a3;
+  --accent:#2d4a7c; --accent-soft:#e4eaf5;
+  --good:#11665a; --good-soft:#dff0ec;
+  --warn:#8a5a00; --warn-soft:#f8eeda;
+  --debt:#ab2a21; --debt-soft:#fae7e5;
+  --display:"IBM Plex Sans Condensed",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --body:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#13161c; --surface:#1b1f27; --surface-2:#232832; --line:#343a46; --line-strong:#4e5666;
+  --fg:#eceef3; --fg-dim:#a0a8b8; --fg-faint:#7a8292;
+  --accent:#88a8dc; --accent-soft:#1e2a40;
+  --good:#4fd1b5; --good-soft:#123029;
+  --warn:#e5b25c; --warn-soft:#342917;
+  --debt:#f08a82; --debt-soft:#3a1d1a;
+  color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#13161c; --surface:#1b1f27; --surface-2:#232832; --line:#343a46; --line-strong:#4e5666;
+  --fg:#eceef3; --fg-dim:#a0a8b8; --fg-faint:#7a8292;
+  --accent:#88a8dc; --accent-soft:#1e2a40;
+  --good:#4fd1b5; --good-soft:#123029;
+  --warn:#e5b25c; --warn-soft:#342917;
+  --debt:#f08a82; --debt-soft:#3a1d1a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.55;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:40;background:var(--surface)}
+.wrap{max-width:62rem;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:0 4rem}
+h1,h2,h3{font-family:var(--display);font-weight:700;letter-spacing:-.01em;text-wrap:balance;margin:0}
+.eyebrow{font-family:var(--display);font-weight:600;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--fg-faint)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+p{margin:0}
+
+header.masthead{padding-block:2.2rem 1.4rem;border-bottom:1px solid var(--line)}
+header.masthead h1{font-size:clamp(1.7rem,5vw,2.3rem);line-height:1.1}
+header.masthead .lede{color:var(--fg-dim);max-width:52ch;margin-top:.5rem}
+.nature{display:inline-flex;align-items:center;gap:.45rem;margin-top:.9rem;padding:.3rem .6rem;
+  border:1px solid var(--line);border-radius:3px;background:var(--surface-2);font-size:.78rem;color:var(--fg-dim)}
+.nature b{color:var(--fg);font-weight:600}
+
+.rail{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--surface);border-bottom:1px solid var(--line-strong);
+  margin-left:calc(-1*max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1*max(16px,env(safe-area-inset-right,0px)))}
+.rail-in{max-width:62rem;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:.6rem;display:flex;gap:.5rem;flex-wrap:wrap;align-items:stretch}
+.vcell{flex:1 1 7.5rem;min-width:0;border:1px solid var(--line);border-radius:3px;padding:.4rem .6rem;background:var(--surface-2)}
+.vcell .k{font-family:var(--display);font-size:.65rem;letter-spacing:.09em;text-transform:uppercase;color:var(--fg-faint);display:block}
+.vcell .v{font-family:var(--display);font-weight:700;font-size:1.05rem;line-height:1.25;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vcell.on{border-color:var(--accent);background:var(--accent-soft)}
+.vcell.on .v{color:var(--accent)}
+.vcell.simple{border-color:var(--good);background:var(--good-soft)}
+.vcell.simple .v{color:var(--good)}
+.vcell.bad{border-color:var(--debt);background:var(--debt-soft)}
+.vcell.bad .v{color:var(--debt)}
+#v-debt{cursor:pointer}
+#v-debt:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+section.gate{padding-block:2.2rem 0}
+.gate-head{display:flex;gap:.8rem;align-items:baseline;border-bottom:2px solid var(--accent);padding-bottom:.5rem}
+.gate-n{font-family:var(--display);font-weight:700;font-size:1rem;color:var(--accent);background:var(--accent-soft);border-radius:3px;padding:.05rem .45rem;flex:none}
+.gate-head h2{font-size:clamp(1.15rem,3.4vw,1.4rem)}
+.gate-head .sub{margin-left:auto;font-size:.76rem;color:var(--fg-faint);text-align:right;flex:1 1 8rem;min-width:0}
+.note{color:var(--fg-dim);font-size:.9rem;margin-top:.8rem;max-width:64ch}
+.intro{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:1.4rem;align-items:start;margin-top:.4rem}
+.intro .note{max-width:none}
+.intro .panel{margin-top:0}
+.icol{min-width:0;display:flex;flex-direction:column}
+.exnote{font-size:.8rem;color:var(--fg-dim);align-self:center;max-width:34ch;line-height:1.4}
+@media (max-width:760px){.intro{grid-template-columns:1fr}.exnote{align-self:flex-start}}
+
+.qlist{margin-top:1.1rem;display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.q{background:var(--surface);padding:.75rem .85rem;display:grid;grid-template-columns:2.6rem 1fr auto;gap:.3rem .8rem;align-items:center}
+.q .id{font-family:var(--mono);font-size:.78rem;font-weight:500;color:var(--accent)}
+.q .txt{min-width:0;font-size:.93rem}
+.q .hint{display:block;font-size:.78rem;color:var(--fg-faint);margin-top:.15rem;line-height:1.45}
+.seg{display:flex;gap:0;border:1px solid var(--line-strong);border-radius:3px;overflow:hidden;flex:none}
+.seg label{font-family:var(--display);font-weight:600;font-size:.78rem;padding:.3rem .62rem;cursor:pointer;background:var(--surface);color:var(--fg-dim);border-left:1px solid var(--line);white-space:nowrap;user-select:none}
+.seg label:first-of-type{border-left:0}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg label:has(input:checked){background:var(--accent);color:#fff}
+.seg label:has(input:focus-visible){outline:2px solid var(--fg);outline-offset:-2px}
+@media (max-width:640px){
+  .q{grid-template-columns:2.6rem 1fr}
+  .seg{grid-column:1/-1;margin-top:.35rem;align-self:start}
+}
+
+.ladder{margin-top:1.3rem;display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.rung{background:var(--surface);padding:.6rem .85rem;display:grid;grid-template-columns:4.2rem 1fr 5.2rem;gap:.2rem .8rem;align-items:center;opacity:.5}
+.rung .lv{font-family:var(--display);font-weight:700;font-size:.95rem}
+.rung .ds{font-size:.86rem;color:var(--fg-dim);min-width:0}
+.rung .cx{font-family:var(--mono);font-size:.78rem;text-align:right;color:var(--fg-faint)}
+.rung.active{opacity:1;background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.rung.active .lv{color:var(--accent)}
+.rung.reach{opacity:.85}
+@media (max-width:560px){.rung{grid-template-columns:4.2rem 1fr}.rung .cx{grid-column:2;text-align:left}}
+
+.panel{margin-top:1.1rem;border:1px solid var(--line);border-radius:4px;background:var(--surface);padding:.95rem 1rem}
+.panel h3{font-size:.95rem;margin-bottom:.5rem}
+.panel.good{border-color:var(--good);background:var(--good-soft)}
+.panel.warn{border-color:var(--warn);background:var(--warn-soft)}
+.panel.debt{border:1.5px solid var(--debt);background:var(--debt-soft)}
+.panel.debt h3{color:var(--debt)}
+.panel small{display:block;color:var(--fg-dim);font-size:.8rem;margin-top:.5rem}
+
+.checks{display:flex;flex-direction:column;gap:.5rem;margin-top:.9rem}
+.chk{display:grid;grid-template-columns:auto 2.3rem 1fr;gap:.6rem;align-items:start;padding:.6rem .7rem;border:1px solid var(--line);border-radius:3px;background:var(--surface);cursor:pointer}
+.chk:has(input:checked){border-color:var(--debt);background:var(--debt-soft)}
+.chk.f1:has(input:checked){border-color:var(--good);background:var(--good-soft)}
+.chk input{margin:.25rem 0 0;accent-color:var(--accent);flex:none}
+.chk .id{font-family:var(--mono);font-size:.78rem;font-weight:500;color:var(--fg-faint)}
+.chk:has(input:checked) .id{color:var(--debt)}
+.chk.f1:has(input:checked) .id{color:var(--good)}
+.chk .txt{min-width:0;font-size:.9rem}
+.chk .why{display:block;font-size:.78rem;color:var(--fg-dim);margin-top:.2rem;line-height:1.45}
+.chk:has(input:focus-visible){outline:2px solid var(--fg);outline-offset:1px}
+
+.disc{margin-top:1rem;display:flex;flex-direction:column;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.drow{background:var(--surface);padding:.6rem .85rem;display:grid;grid-template-columns:2.6rem 1fr 7.5rem 1fr;gap:.3rem .7rem;align-items:center}
+.drow .id{font-family:var(--mono);font-size:.78rem;color:var(--accent);font-weight:500}
+.drow .dim{font-family:var(--display);font-weight:600;font-size:.86rem;min-width:0}
+.drow .pole{font-size:.8rem;color:var(--fg-dim);min-width:0}
+.drow .pole.r{text-align:left}
+.drow .pole.l{text-align:right}
+.dsc{display:block;font-size:.74rem;line-height:1.42;color:var(--fg-faint);margin-top:.15rem;
+  text-transform:none;letter-spacing:normal;font-weight:400;font-family:var(--body)}
+.drow .dfull{grid-column:2/-1;margin-top:.1rem}
+.tri{display:flex;justify-content:center;gap:.25rem;flex:none}
+.tri label{width:1.6rem;height:1.6rem;border:1px solid var(--line-strong);border-radius:50%;display:grid;place-items:center;cursor:pointer;background:var(--surface);font-size:.7rem;color:var(--fg-faint);font-family:var(--mono)}
+.tri input{position:absolute;opacity:0;width:1px;height:1px}
+.tri label:has(input:checked){background:var(--accent);border-color:var(--accent);color:#fff}
+.tri label:has(input:focus-visible){outline:2px solid var(--fg);outline-offset:1px}
+@media (max-width:760px){
+  .drow{grid-template-columns:2.6rem 1fr;row-gap:.1rem}
+  .drow .dim,.drow .pole.l,.drow .pole.r,.tri{grid-column:2}
+  .drow .pole.l,.drow .pole.r{text-align:left;font-size:.76rem}
+  .drow .pole.l::before{content:"← gerenciada: "}
+  .drow .pole.r::before{content:"→ aberta: "}
+  .tri{justify-content:flex-start;margin-top:.3rem}
+}
+
+.tscroll{overflow-x:auto;margin-top:1rem;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:.85rem;min-width:28rem}
+th,td{text-align:left;padding:.45rem .7rem;border-bottom:1px solid var(--line)}
+th{font-family:var(--display);font-weight:600;font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;color:var(--fg-faint);background:var(--surface-2)}
+tr:last-child td{border-bottom:0}
+
+ul.flags{margin:.8rem 0 0;padding-left:1.1rem;color:var(--fg-dim);font-size:.88rem;display:flex;flex-direction:column;gap:.35rem}
+ul.flags b{color:var(--fg);font-weight:600}
+
+.dlist{display:flex;flex-direction:column;gap:.7rem;margin-top:.3rem}
+.dent{border-left:3px solid var(--debt);background:var(--surface);border-radius:0 3px 3px 0;padding:.6rem .85rem}
+.dent .dsrc{font-family:var(--mono);font-size:.7rem;color:var(--debt);text-transform:uppercase;letter-spacing:.05em}
+.dent .dt{font-family:var(--display);font-weight:700;font-size:.97rem;margin-top:.1rem;text-wrap:balance}
+.dent .dw,.dent .df{font-size:.84rem;margin-top:.4rem;color:var(--fg-dim)}
+.dent .dw b,.dent .df b{display:block;font-family:var(--display);font-size:.64rem;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--fg-faint);font-weight:600;margin-bottom:.05rem}
+.dent .df{color:var(--fg)}
+
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.7rem;margin-top:1rem}
+label.fld{display:flex;flex-direction:column;gap:.25rem;font-family:var(--display);font-weight:600;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--fg-faint)}
+input[type=text],textarea,select{font-family:var(--body);font-size:.9rem;color:var(--fg);background:var(--surface);border:1px solid var(--line-strong);border-radius:3px;padding:.42rem .55rem;width:100%;min-width:0}
+textarea{resize:vertical;min-height:4.5rem}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+
+pre.record{font-family:var(--mono);font-size:.78rem;line-height:1.6;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:.9rem;overflow-x:auto;margin-top:1rem;white-space:pre;color:var(--fg)}
+.btnrow{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.9rem}
+button{font-family:var(--display);font-weight:600;font-size:.82rem;padding:.45rem .85rem;border-radius:3px;border:1px solid var(--line-strong);background:var(--surface);color:var(--fg);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button:hover{border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.toast{font-size:.8rem;color:var(--good);align-self:center}
+footer{margin-top:2.5rem;padding-top:1rem;border-top:1px solid var(--line);font-size:.78rem;color:var(--fg-faint);
+  display:flex;gap:.8rem;flex-wrap:wrap;justify-content:space-between}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <span class="eyebrow">Instrumento aberto · arquitetura de IA</span>
+  <h1>Triagem Agêntica</h1>
+  <p class="lede">Duas perguntas na entrada de uma demanda de IA generativa, nesta ordem: que nível de autonomia o problema realmente exige, e como construir. Onde a solução roda decorre da segunda.</p>
+  <span class="nature">Gate <b>orientativo</b> — não barra a demanda; registra o que se está trocando.</span>
+</header>
+
+<div class="rail" id="rail">
+  <div class="rail-in">
+    <div class="vcell" id="v-level"><span class="k">Nível</span><span class="v">—</span></div>
+    <div class="vcell" id="v-cost"><span class="k">Custo rel. a L1</span><span class="v">—</span></div>
+    <div class="vcell" id="v-via"><span class="k">Via</span><span class="v">—</span></div>
+    <div class="vcell" id="v-debt"><span class="k">Débitos</span><span class="v">0</span></div>
+  </div>
+</div>
+
+<section class="gate">
+  <div class="gate-head">
+    <span class="gate-n">?</span>
+    <h2>Para que serve</h2>
+    <span class="sub">Leia uma vez;<br>depois vá direto ao Gate A.</span>
+  </div>
+  <div class="intro">
+    <div class="icol">
+      <p class="note">A maioria das demandas que chega rotulada como agêntica não precisa de um agente. Precisa de uma chamada ao modelo, ou de um fluxo determinístico com o modelo em um dos passos. A diferença não é estética: cada degrau de autonomia multiplica custo, cauda de latência e carga de avaliação — e troca teste determinístico por avaliação estatística, que é um custo de sustentação permanente.</p>
+      <p class="note">O instrumento separa duas decisões que a conversa costuma fundir numa só. <b>Nível</b> é sobre necessidade: define se há agente no problema. <b>Via</b> é sobre modelo de construção e sustentação, e só faz sentido depois que há agente — e é dela que decorre onde a solução roda.</p>
+      <p class="note">Inverter a ordem é o erro mais comum: escolhe-se a plataforma primeiro, e a plataforma escolhida passa a justificar o nível de autonomia. O resultado é agente onde bastava uma chamada.</p>
+      <div class="btnrow">
+        <button id="load-ex-top">Carregar exemplo</button>
+        <span class="exnote">Preenche uma demanda fictícia para mostrar como um veredito completo se parece. Não é recomendação nem valor padrão.</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Como adaptar</h3>
+      <p style="font-size:.9rem">Os limiares aqui são um ponto de partida defensável, não uma verdade. O saldo de ±3 nos discriminadores, o teto de latência e as faixas de custo relativo devem ser recalibrados com os números da sua operação.</p>
+      <p style="font-size:.9rem;margin-top:.6rem">O que vale preservar é a estrutura: pisos que estabelecem o nível mínimo, eliminatórias que decidem sozinhas, discriminadores que só pesam quando nenhuma eliminatória acionou, e um registro que torna visível quando alguém decide diferente.</p>
+    </div>
+  </div>
+</section>
+
+<section class="gate" id="dsec">
+  <div class="gate-head">
+    <span class="gate-n">!</span>
+    <h2>Débitos arquiteturais</h2>
+    <span class="sub">O que falta, de onde vem,<br>por que é débito e o que fecha.</span>
+  </div>
+  <div id="debts"></div>
+</section>
+
+<section class="gate">
+  <div class="gate-head">
+    <span class="gate-n">A</span>
+    <h2>Nível de autonomia necessário</h2>
+    <span class="sub">Cada resposta estabelece um piso.<br>O nível é o maior piso acionado.</span>
+  </div>
+
+  <div class="qlist" id="qlist"></div>
+  <div class="ladder" id="ladder"></div>
+  <div id="level-note"></div>
+
+  <h3 style="margin-top:1.6rem;font-size:.95rem">Incompatibilidades duras</h3>
+  <p class="note" style="margin-top:.3rem">Presentes com L3 ou L4, cada uma é débito arquitetural desde o desenho.</p>
+  <div class="checks" id="inc"></div>
+
+  <div class="panel">
+    <h3>Sinais de sobreengenharia</h3>
+    <ul class="flags">
+      <li>A demanda diz "o agente decide", mas existem dois ou três caminhos possíveis. <b>É um <span class="mono">if</span>.</b></li>
+      <li>Não há ferramenta nenhuma, só prompt. <b>É L1.</b></li>
+      <li>O agente chama sempre as mesmas ferramentas na mesma ordem. <b>É L2 pagando preço de L3.</b></li>
+      <li>"Multiagente" onde todos os agentes são do mesmo time e domínio.</li>
+      <li>A justificativa do nível é a plataforma disponível, não o problema.</li>
+      <li>O critério de sucesso é "o usuário gostar".</li>
+    </ul>
+    <small>Três enganos de nomenclatura: <b>RAG puro é L2</b> — buscar e gerar são dois passos conhecidos, e um chatbot de documentos não é agente. <b>Roteador sozinho não é agência</b> — é um classificador L1 mais um <span class="mono">switch</span>, por uma fração do custo. E <b>L4 é nível de governança, não de topologia nem de protocolo</b> — vários agentes não fazem L4, e um protocolo agente-a-agente usado como formato de fio dentro de um time também não. O que faz L4 é haver dono que precise poder vetar.</small>
+  </div>
+</section>
+
+<section class="gate">
+  <div class="gate-head">
+    <span class="gate-n">B</span>
+    <h2>Via de construção</h2>
+    <span class="sub">Só se aplica de L3 em diante.</span>
+  </div>
+
+  <div id="b-gate"></div>
+
+  <div id="b-body">
+    <p class="note"><b>Via gerenciada:</b> runtime de agente do fornecedor de nuvem ou de plataforma. Entrega rápida, portabilidade baixa por desenho — e isso é escolha, não defeito. <b>Via aberta:</b> agente em código próprio, em contêineres orquestrados, com o estado, o traço e o ciclo de implantação sob sua custódia.</p>
+
+    <h3 style="margin-top:1.5rem;font-size:.95rem">Eliminatórias — qualquer uma decide</h3>
+    <p class="note" style="margin-top:.3rem">Forçam a <b>via aberta</b>:</p>
+    <div class="checks" id="e2"></div>
+    <p class="note" style="margin-top:1rem">Forçam a <b>via gerenciada</b>:</p>
+    <div class="checks" id="e1"></div>
+    <div id="elim-verdict"></div>
+
+    <h3 style="margin-top:1.6rem;font-size:.95rem">Discriminadores</h3>
+    <p class="note" style="margin-top:.3rem">Valem quando nenhuma eliminatória acionou. Saldo = quantos puxam para a via aberta menos quantos puxam para a gerenciada.</p>
+    <div class="disc" id="disc"></div>
+    <div id="disc-verdict"></div>
+    <div id="onde"></div>
+
+    <div class="panel">
+      <h3>Gatilhos de promoção: gerenciada → aberta</h3>
+      <ul class="flags">
+        <li>O volume passa do ponto de equilíbrio entre custo por sessão gerenciada e custo de contêiner reservado.</li>
+        <li>O fluxo passa a exigir ciclo, checkpoint próprio ou retomada de longa duração.</li>
+        <li>Surge um segundo consumidor em outra plataforma.</li>
+        <li>A avaliação nativa deixa de responder às perguntas da operação.</li>
+        <li>O modelo necessário sai do catálogo do fornecedor.</li>
+      </ul>
+      <small>Registrar na aprovação, não depois. É o que torna a via gerenciada uma escolha reversível — e por isso a zona cinza resolve a favor dela.</small>
+    </div>
+
+    <div class="panel warn">
+      <h3>Vale nas duas vias</h3>
+      <p style="font-size:.88rem">Gateway de modelos, observabilidade específica de LLM e gestão de custo de inferência raramente vêm prontos de qualquer nuvem, e tendem a sobrar para a arquitetura em todas as hipóteses. Planeje-os como construção, não como item de catálogo.</p>
+    </div>
+  </div>
+</section>
+
+<section class="gate">
+  <div class="gate-head">
+    <span class="gate-n">↓</span>
+    <h2>Registro de decisão</h2>
+    <span class="sub">Cola no registro da demanda.</span>
+  </div>
+
+  <div class="fields">
+    <label class="fld">Demanda<input type="text" id="f-demanda" placeholder="nome da demanda"></label>
+    <label class="fld">Identificador<input type="text" id="f-ppm" placeholder="nº do chamado ou do projeto"></label>
+    <label class="fld">Arquiteto<input type="text" id="f-arq" placeholder="nome"></label>
+    <label class="fld">Equipe<input type="text" id="f-equipe" placeholder="time responsável"></label>
+  </div>
+
+  <div class="fields" style="grid-template-columns:1fr">
+    <label class="fld">A equipe seguiu diferente do veredito?
+      <select id="f-ovr"><option value="nao">Não</option><option value="sim">Sim</option></select>
+    </label>
+    <label class="fld" id="ovr-wrap" hidden>Nível e via adotados, e justificativa
+      <textarea id="f-ovrwhy" placeholder="Adotado: L3 / via gerenciada. Justificativa: …"></textarea>
+    </label>
+  </div>
+
+  <pre class="record mono" id="record"></pre>
+  <div class="btnrow">
+    <button class="primary" id="copy">Copiar registro</button>
+    <button id="load-ex">Carregar exemplo</button>
+    <button id="clear">Limpar</button>
+    <span class="toast" id="toast" hidden></span>
+  </div>
+  <p class="note">O exemplo preenche uma demanda fictícia — um assistente de análise documental cujo dado não pode sair do perímetro corporativo — para mostrar como um veredito completo se parece, com o nível, a via decidida por eliminatória e o registro preenchido. Não é recomendação nem valor padrão: comece pela página vazia quando for triar uma demanda de verdade.</p>
+  <p class="note">A sobreposição é o que substitui o poder de barrar. Não impede nada: torna visível o que foi trocado, por quem e por quê. Um gate orientativo sem esse campo vira sugestão esquecível.</p>
+</section>
+
+<footer>
+  <span>Triagem Agêntica — instrumento aberto. Adapte os limiares à sua operação.</span>
+  <span class="mono">v1.0 · gate orientativo</span>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+var QS = [
+  {id:"A1",t:"A entrada exige interpretação de linguagem natural?",
+   h:"Texto livre, fala ou documento que alguém escreveu precisam ser entendidos? Se a entrada é formulário, evento ou registro estruturado, o problema é de regra e não de modelo.",opts:[["nao","Não"],["sim","Sim"]]},
+  {id:"A2",t:"Os casos são enumeráveis em lista fechada, com ação conhecida por caso?",
+   h:"Se você consegue listar os casos possíveis e dizer o que fazer em cada um, uma tabela de roteamento resolve o despacho. O modelo entra só para classificar, se precisar.",opts:[["sim","Sim"],["nao","Não"]]},
+  {id:"A3",t:"Precisa consultar base de conhecimento ou sistema externo para responder?",
+   h:"Buscar documento, chamar API, ler registro. Qualquer ida para fora do prompt estabelece o piso L2.",opts:[["nao","Não"],["sim","Sim"]]},
+  {id:"A4",t:"A sequência de passos é conhecida em tempo de desenho?",
+   h:"Se você pode desenhar o fluxo inteiro antes de executar, é workflow com modelo nos passos que precisam de linguagem — não agente. É a pergunta que mais reprova.",opts:[["sim","Sim"],["nao","Não"]]},
+  {id:"A5",t:"O próximo passo depende do resultado do anterior de modo que não se pode pré-fixar?",
+   h:"O que um passo devolve muda qual passo vem depois, e essa ramificação não cabe num fluxo pré-cabeado. Se cabe num conjunto de condições conhecidas, ainda é workflow.",opts:[["nao","Não"],["sim","Sim"]]},
+  {id:"A6",t:"A escolha de qual ferramenta usar varia caso a caso?",
+   h:"Se as ferramentas são sempre as mesmas, na mesma ordem, não há agência — há chamada. A variação precisa ser decidida em execução, não no desenho.",opts:[["nao","Não"],["sim","Sim"]]},
+  {id:"A7",t:"Precisa iterar sobre a própria saída até atingir um critério de qualidade?",
+   h:"O agente avalia o que produziu e refaz até passar num critério. Exige que o critério exista e seja verificável.",opts:[["nao","Não"],["sim","Sim"]]},
+  {id:"A8a",t:"Hoje existe mais de um dono que precisa poder vetar mudança no seu próprio agente?",
+   h:"Pergunta de autoridade, não de topologia nem de tamanho de time. Vários agentes de um mesmo dono não fazem L4 — fazem L3 com subagentes. L4 existe para governar negociação entre partes.",opts:[["nao","Não"],["sim","Sim"]]},
+  {id:"A8b",t:"Algum agente é candidato a ser consumido por outro canal ou domínio no horizonte de planejamento?",
+   h:"Não eleva o nível. Obriga contrato publicado e registro em catálogo desde o início, para que a titularidade depois migre por transferência e não por reconstrução.",opts:[["nao","Não"],["sim","Sim"]]}
+];
+var LADDER = [
+  {n:0,lv:"L0",nm:"Determinístico",ds:"Sem modelo. Regra, consulta, API, automação de processo, fluxo fixo.",cx:"—"},
+  {n:1,lv:"L1",nm:"Modelo como função",ds:"Uma chamada. Entrada → saída. Sem ferramenta, sem estado, sem laço.",cx:"1×"},
+  {n:2,lv:"L2",nm:"Fluxo com modelo",ds:"Passos conhecidos em desenho. Orquestrador determinístico. RAG puro é aqui.",cx:"2–4×"},
+  {n:3,lv:"L3",nm:"Agente",ds:"O modelo escolhe o caminho: qual ferramenta, em que ordem, quando parar.",cx:"10–50×"},
+  {n:4,lv:"L4",nm:"Multiagente",ds:"Governança federada: cada agente com dono que veta, ciclo e política próprios.",cx:"30–150×"}
+];
+var INC = [
+  {id:"I1",t:"SLA de latência p95 abaixo de poucos segundos",
+   w:"O laço agêntico tem cauda longa e imprevisível por desenho: o número de passos é decidido em execução.",
+   fix:"Renegociar o SLA, ou impor teto de passos e medir a cauda p95 antes de prometer o número. Teto de passos limita a cauda ao custo de truncar casos legítimos."},
+  {id:"I2",t:"Reprodutibilidade exigida — mesma entrada, mesma saída, auditável",
+   w:"Temperatura zero reduz, não garante. A escolha dinâmica de caminho é a própria fonte da variação.",
+   fix:"Registrar trajetória e permitir replay, o que exige custódia do estado — ou seja, via aberta. Garantia byte a byte não existe: se é requisito duro, o nível precisa cair."},
+  {id:"I3",t:"Sem critério de sucesso mensurável definido",
+   w:"Sem métrica não há conjunto de avaliação; sem avaliação não há como dizer se uma mudança de prompt melhorou ou piorou. É a mais grave e a menos percebida.",
+   fix:"Definir a métrica e montar o conjunto de avaliação antes de construir. Não é débito a carregar — é obrigação anterior ao desenvolvimento."},
+  {id:"I4",t:"Ação irreversível sem ponto de aprovação humana",
+   w:"O problema não é a tecnologia, é o nível de autonomia concedido. Um modelo não substitui alçada formal.",
+   fix:"Inserir ponto de decisão humana no caminho da ação, antes do efeito irreversível."},
+  {id:"I5",t:"Teto rígido de custo por interação",
+   w:"O custo por interação em L3 não é previsível com a precisão que um teto rígido pressupõe, porque o número de passos varia.",
+   fix:"Trocar o teto rígido por faixa monitorada com alerta, ou reduzir o nível para L2, onde o custo é a soma de passos conhecidos."}
+];
+var E2 = [
+  {id:"E1",t:"Modelo auto-hospedado é requisito",w:"Runtimes gerenciados pressupõem o modelo do fornecedor ou o catálogo dele."},
+  {id:"E2",t:"Execução on-premise ou na borda é requisito",w:"O plano de execução gerenciado não alcança esses perímetros."},
+  {id:"E3",t:"O dado não pode sair de um perímetro que o runtime gerenciado não cobre",w:"Residência e soberania vencem conveniência."},
+  {id:"E4",t:"Replay determinístico de trajetória é exigência regulatória",w:"Exige custódia do estado e do traço, não a telemetria do fornecedor."},
+  {id:"E5",t:"O fluxo exige ciclo, checkpoint próprio ou retomada longa com estado sob sua custódia",w:"É o limite técnico que separa as duas vias."},
+  {id:"E6",t:"O agente precisa ser consumido por mais de uma plataforma como cidadão de primeira classe",w:"Agente nativo é cidadão de primeira classe apenas na plataforma dele."}
+];
+var E1L = [
+  {id:"E7",t:"Não há equipe de engenharia com capacidade de sustentação alocada",w:"A que mais reprova na prática. A via aberta tem custo de sustentação contínuo que precisa de dono nomeado. Sem dono, o agente apodrece em produção."},
+  {id:"E8",t:"A superfície de consumo é exclusivamente a do fornecedor e não há apetite para construir front",w:"O valor da via gerenciada está na integração que você não constrói."},
+  {id:"E9",t:"Piloto descartável, prazo fechado, hipótese a validar",w:"Caminho de menor custo para descobrir se vale."}
+];
+var DISC = [
+  {id:"T1",dim:"Gravidade do dado",d:"Onde vivem os sistemas de registro que o agente consulta. Dado concentrado numa plataforma favorece o runtime nativo dela; dado espalhado ou on-prem puxa para o contêiner portável.",l:"Concentrada em uma plataforma",r:"Distribuída, híbrida ou on-prem"},
+  {id:"T2",dim:"Perfil de quem constrói",d:"Quem vai escrever e, principalmente, sustentar. Analista em low-code não sustenta a via aberta; engenheiro ocioso em low-code é desperdício de capacidade.",l:"Analista, low-code",r:"Engenharia de software"},
+  {id:"T3",dim:"Vida útil esperada",d:"Quanto tempo a solução deve viver. Incerteza sobre isso é argumento a favor do caminho descartável, porque o custo de errar é menor.",l:"Menos de 12 meses, ou incerta",r:"Ativo corporativo duradouro"},
+  {id:"T4",dim:"Complexidade do fluxo",d:"Ciclo, paralelismo e retomada de longa duração com estado sob sua custódia são o limite técnico que separa as duas vias.",l:"Linear ou roteamento simples",r:"Ciclos, paralelismo, retomada"},
+  {id:"T5",dim:"Volume sustentado",d:"Acima do ponto de equilíbrio, contêiner reservado fica mais barato que sessão gerenciada por consumo. Abaixo dele, o inverso.",l:"Baixo a médio",r:"Alto e previsível"},
+  {id:"T6",dim:"Observabilidade e avaliação",d:"Se a operação precisa do traço de trajetória e do seu próprio conjunto de avaliação, a telemetria nativa não responde às perguntas que vão aparecer.",l:"O nativo basta",r:"Pipeline próprio, traço de trajetória"},
+  {id:"T7",dim:"Número de consumidores",d:"Muitos consumidores exigem contrato estável, versionamento e catálogo — que é trabalho de plataforma, não de solução.",l:"Um canal",r:"Muitos, por contrato"},
+  {id:"T8",dim:"Engenharia de custo e latência",d:"Cache de respostas em camadas e roteamento entre modelos por custo só existem se você controla o caminho da chamada. Em runtime gerenciado, esse caminho é do fornecedor.",l:"Não é diferencial",r:"É diferencial"}
+];
+var EXAMPLE = {
+  a:{A1:"sim",A2:"nao",A3:"sim",A4:"nao",A5:"sim",A6:"sim",A7:"nao",A8a:"nao",A8b:"sim"},
+  inc:[], e2:["E3"], e1:[], t:{},
+  f:{demanda:"Assistente de análise documental",ppm:"DEM-2026-014",arq:"",equipe:""},
+  cloud:"cluster no perímetro corporativo"
+};
+
+var S = {a:{},inc:{},e2:{},e1:{},t:{},cloud:"",ovr:"nao"};
+var $ = function(id){return document.getElementById(id)};
+var esc = function(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})};
+function keysOf(o){var r=[];for(var k in o){if(o[k])r.push(k)}return r.sort()}
+
+$("qlist").innerHTML = QS.map(function(q){
+  return '<div class="q"><span class="id">'+q.id+'</span>'+
+    '<span class="txt">'+esc(q.t)+'<span class="hint">'+esc(q.h)+'</span></span>'+
+    '<span class="seg">'+q.opts.map(function(o){
+      return '<label><input type="radio" name="q-'+q.id+'" id="q-'+q.id+'-'+o[0]+'" value="'+o[0]+'"><span>'+o[1]+'</span></label>';
+    }).join("")+'</span></div>';
+}).join("");
+
+function renderChecks(el,items,cls){
+  el.innerHTML = items.map(function(it){
+    return '<label class="chk'+(cls?" "+cls:"")+'"><input type="checkbox" id="c-'+it.id+'" value="'+it.id+'">'+
+      '<span class="id">'+it.id+'</span>'+
+      '<span class="txt">'+esc(it.t)+'<span class="why">'+esc(it.w)+'</span></span></label>';
+  }).join("");
+}
+renderChecks($("inc"),INC);
+renderChecks($("e2"),E2);
+renderChecks($("e1"),E1L,"f1");
+
+$("disc").innerHTML = DISC.map(function(d){
+  return '<div class="drow"><span class="id">'+d.id+'</span>'+
+    '<span class="dim">'+esc(d.dim)+'</span>'+
+    '<span class="dsc dfull">'+esc(d.d)+'</span>'+
+    '<span class="pole l">'+esc(d.l)+'</span>'+
+    '<span class="tri">'+[["-1","G"],["0","·"],["1","A"]].map(function(v){
+      return '<label title="'+(v[0]==="-1"?"puxa para a via gerenciada":v[0]==="0"?"neutro":"puxa para a via aberta")+'"><input type="radio" name="d-'+d.id+'" id="d-'+d.id+'-'+(v[0]==="-1"?"m":v[0]==="0"?"n":"p")+'" value="'+v[0]+'"><span>'+v[1]+'</span></label>';
+    }).join("")+'</span>'+
+    '<span class="pole r">'+esc(d.r)+'</span></div>';
+}).join("");
+
+function levelOf(){
+  var a = S.a, floors = [], pisos = [];
+  if(!a.A1) return {n:null,pisos:[],front:false};
+  floors.push(a.A1==="sim"?1:0);
+  if(a.A3==="sim"){floors.push(2);pisos.push("A3")}
+  if(a.A4==="nao"){floors.push(3);pisos.push("A4")}
+  if(a.A5==="sim"){floors.push(3);pisos.push("A5")}
+  if(a.A6==="sim"){floors.push(3);pisos.push("A6")}
+  if(a.A7==="sim"){floors.push(3);pisos.push("A7")}
+  var n = Math.max.apply(null,floors);
+  if(a.A8a==="sim" && n>=3){n=4;pisos.push("A8a")}
+  return {n:n,pisos:pisos,front:(a.A8b==="sim" && n===3)};
+}
+function viaOf(){
+  var f2=keysOf(S.e2), f1=keysOf(S.e1);
+  if(f2.length && f1.length) return {v:"conflito",e2:f2,e1:f1,saldo:null};
+  if(f2.length) return {v:"A",e2:f2,e1:f1,saldo:null};
+  if(f1.length) return {v:"G",e2:f2,e1:f1,saldo:null};
+  var saldo=0,answered=0;
+  DISC.forEach(function(d){ if(S.t[d.id]!==undefined && S.t[d.id]!==null){saldo+=S.t[d.id];answered++} });
+  if(!answered) return {v:null,e2:f2,e1:f1,saldo:0};
+  if(saldo>=3) return {v:"A",e2:f2,e1:f1,saldo:saldo};
+  if(saldo<=-3) return {v:"G",e2:f2,e1:f1,saldo:saldo};
+  return {v:"G-cinza",e2:f2,e1:f1,saldo:saldo};
+}
+var VIANOME = {A:"via aberta", G:"via gerenciada"};
+
+function allDebts(){
+  var L=levelOf(), lvl=L.n, T=viaOf(), deb=[], soft=[];
+  keysOf(S.inc).forEach(function(i){
+    var it=INC.filter(function(x){return x.id===i})[0]; if(!it) return;
+    var e={src:"Gate A · incompatibilidade "+i,t:it.t,why:it.w,fix:it.fix};
+    if(lvl!==null && lvl>=3) deb.push(e); else soft.push(e);
+  });
+  if(T.v==="conflito") deb.push({src:"Gate B · eliminatórias",
+    t:"Requisitos mutuamente incompatíveis — "+T.e2.join(", ")+" forçam a via aberta e "+T.e1.join(", ")+" forçam a gerenciada",
+    why:"A demanda não é executável como está. Não é empate a resolver escolhendo um lado: são duas exigências que não coexistem.",
+    fix:"Renegociar o requisito que não é essencial, ou alocar a equipe que falta. Enquanto as duas valerem, não há via possível."});
+  return {deb:deb,soft:soft};
+}
+function renderDebts(){
+  var A=allDebts(), h="";
+  if(A.deb.length){
+    h+='<div class="panel debt"><h3>'+A.deb.length+' débito'+(A.deb.length>1?"s":"")+' aberto'+(A.deb.length>1?"s":"")+'</h3>'+
+      '<div class="dlist">'+A.deb.map(function(x){
+        return '<div class="dent"><div class="dsrc">'+esc(x.src)+'</div><div class="dt">'+esc(x.t)+'</div>'+
+          '<div class="dw"><b>Por que é débito</b>'+esc(x.why)+'</div>'+
+          '<div class="df"><b>O que fecha</b>'+esc(x.fix)+'</div></div>';
+      }).join("")+'</div>'+
+      '<small>Débito aqui não impede a demanda de seguir. Ele entra no registro de decisão para que a troca fique visível a quem aprova.</small></div>';
+  } else {
+    h+='<div class="panel good"><h3>Nenhum débito aberto</h3>'+
+      '<p style="font-size:.9rem">Nenhuma incompatibilidade dura marcada com nível agêntico, e nenhum conflito entre eliminatórias.</p>'+
+      '<small>Débito aparece aqui quando uma incompatibilidade dura é marcada numa demanda de nível L3 ou L4, ou quando eliminatórias de lados opostos acionam ao mesmo tempo.</small></div>';
+  }
+  if(A.soft.length){
+    h+='<div class="panel warn"><h3>'+A.soft.length+(A.soft.length>1?' condições que pesam':' condição que pesa')+' contra subir de nível</h3><ul class="flags">'+
+      A.soft.map(function(x){return '<li><b>'+esc(x.t)+'</b> — '+esc(x.why)+'</li>'}).join("")+
+      '</ul><small>Marcadas, mas o nível atual não é agêntico: aqui não são débito. Se a demanda subir para L3, cada uma passa a ser.</small></div>';
+  }
+  $("debts").innerHTML=h;
+  return A.deb.length;
+}
+
+function paint(){
+  var L = levelOf(), lvl = L.n;
+  var incs = keysOf(S.inc);
+
+  $("ladder").innerHTML = LADDER.map(function(r){
+    var cls = lvl===null?"":(r.n===lvl?"active":(r.n<lvl?"reach":""));
+    return '<div class="rung '+cls+'"><span class="lv">'+r.lv+'</span>'+
+      '<span class="ds"><b style="color:var(--fg)">'+r.nm+'</b> — '+esc(r.ds)+'</span>'+
+      '<span class="cx">'+r.cx+'</span></div>';
+  }).join("");
+
+  var h = "";
+  if(lvl===null){
+    h = '<div class="panel"><h3>Responda A1 para começar</h3><p style="font-size:.88rem;color:var(--fg-dim)">O nível é o maior piso acionado pelas nove perguntas.</p></div>';
+  } else if(lvl<3){
+    h = '<div class="panel good"><h3>Caminho mais simples é suficiente: '+LADDER[lvl].lv+' — '+LADDER[lvl].nm+'</h3>'+
+      '<p style="font-size:.9rem">Nenhuma pergunta acionou piso L3. Não há agente neste problema'+
+      (S.a.A2==="sim"?', e os casos são enumeráveis — tabela de roteamento resolve a classificação':'')+
+      '.</p><small>O Gate B não se aplica. Se a demanda seguir como agêntica, registre a sobreposição.</small></div>';
+  } else {
+    h = '<div class="panel"><h3>'+LADDER[lvl].lv+' — '+LADDER[lvl].nm+'</h3>'+
+      '<p style="font-size:.9rem">Pisos acionados: <b class="mono">'+(L.pisos.join(", ")||"—")+'</b>. '+
+      'Custo de inferência estimado: <b class="mono">'+LADDER[lvl].cx+'</b> relativo a L1 — ordem de grandeza para conversa de viabilidade, não estimativa de capacidade.</p>'+
+      '<small>O salto vem do laço: cada passo reenvia ao modelo o histórico acumulado, então o custo em tokens cresce de forma super-linear no número de passos. Cache, compactação de histórico e teto de passos atenuam; nenhum elimina. E L3 troca teste determinístico por avaliação estatística — o custo de sustentação é estrutural.</small></div>';
+  }
+  if(L.front){
+    h += '<div class="panel good"><h3>L3 com fronteira preparada</h3>'+
+      '<p style="font-size:.9rem">Nenhum segundo dono hoje (A8a), mas há agente candidato a outro canal ou domínio (A8b). Não federa governança e não paga o custo de L4 — e nasce com <b>contrato publicado e registro em catálogo</b>.</p>'+
+      '<small>A titularidade migra sem ninguém decidir: quando um agente se torna o caminho canônico para um sistema, o dono do sistema passa a ser o dono da capacidade. Preparar a fronteira agora faz dessa migração uma transferência, não uma reconstrução.</small></div>';
+  }
+  if(incs.length){
+    h += '<div class="panel debt"><h3>'+incs.length+' incompatibilidade'+(incs.length>1?"s":"")+' dura'+(incs.length>1?"s":"")+' marcada'+(incs.length>1?"s":"")+'</h3>'+
+      '<p style="font-size:.9rem">'+incs.map(function(i){
+        var it=INC.filter(function(x){return x.id===i})[0];return '<b class="mono">'+i+'</b> '+esc(it.t);
+      }).join(' · ')+'</p>'+
+      '<small>'+(lvl>=3
+        ? 'Com L'+lvl+', cada uma é débito arquitetural desde o desenho — veja a seção de débitos, com o que fecha cada uma.'
+        : 'Em L'+(lvl===null?"?":lvl)+' estas condições não conflitam: elas pesam contra subir para L3.')+'</small></div>';
+  }
+  $("level-note").innerHTML = h;
+
+  var T = viaOf();
+  var bgate = $("b-gate"), bbody = $("b-body");
+  if(lvl===null || lvl<3){
+    bgate.innerHTML = '<div class="panel good"><h3>Gate B não se aplica</h3><p style="font-size:.9rem">'+
+      (lvl===null?'Conclua o Gate A.':'O Gate A indicou '+LADDER[lvl].lv+'. Sem agente não há questão de via — a construção segue o padrão da sua plataforma de dados e integração.')+'</p></div>';
+    bbody.hidden = true;
+  } else { bgate.innerHTML = ""; bbody.hidden = false; }
+
+  var ev = $("elim-verdict");
+  if(T.v==="conflito"){
+    ev.innerHTML = '<div class="panel debt"><h3>Achado: requisitos mutuamente incompatíveis</h3>'+
+      '<p style="font-size:.9rem">Acionaram eliminatórias dos dois lados — <b class="mono">'+T.e2.join(", ")+'</b> forçam a via aberta e <b class="mono">'+T.e1.join(", ")+'</b> forçam a gerenciada. A demanda não é executável como está.</p>'+
+      '<small>Não é empate a resolver escolhendo um lado. A saída é renegociar o requisito ou alocar a equipe.</small></div>';
+  } else if(T.e2.length){
+    ev.innerHTML = '<div class="panel"><h3>Via aberta — decidida por eliminatória</h3><p style="font-size:.9rem">Acionou <b class="mono">'+T.e2.join(", ")+'</b>. Os discriminadores abaixo passam a ser informativos.</p></div>';
+  } else if(T.e1.length){
+    ev.innerHTML = '<div class="panel"><h3>Via gerenciada — decidida por eliminatória</h3><p style="font-size:.9rem">Acionou <b class="mono">'+T.e1.join(", ")+'</b>. Os discriminadores abaixo passam a ser informativos.</p></div>';
+  } else ev.innerHTML = "";
+
+  var dv = $("disc-verdict");
+  if(T.saldo===null){
+    dv.innerHTML = '<p class="note">Saldo não aplicado: uma eliminatória já decidiu.</p>';
+  } else {
+    var sl = (T.saldo>0?"+":"")+T.saldo;
+    var txt = T.v==="A" ? "Via aberta" : T.v==="G" ? "Via gerenciada"
+      : T.v==="G-cinza" ? "Zona cinza → via gerenciada com regra de promoção explícita" : "Responda os discriminadores";
+    dv.innerHTML = '<div class="panel'+(T.v==="G-cinza"?" warn":"")+'"><h3>Saldo <span class="mono">'+sl+'</span> → '+txt+'</h3>'+
+      '<p style="font-size:.9rem">Leitura: <span class="mono">+3</span> ou mais → via aberta · <span class="mono">−3</span> ou menos → via gerenciada · entre <span class="mono">−2</span> e <span class="mono">+2</span> → zona cinza.</p>'+
+      (T.v==="G-cinza"?'<small>A zona cinza resolve a favor da via gerenciada porque a promoção gerenciada → aberta é um caminho conhecido. O inverso é desperdício de investimento. Na dúvida, o erro mais barato é começar gerenciado.</small>':'')+'</div>';
+  }
+
+  var tv = (T.v||"").indexOf("G")===0 ? "G" : T.v==="A" ? "A" : null;
+  var ob = $("onde");
+  if(tv==="A"){
+    ob.innerHTML = '<div class="panel"><h3>Onde roda — a plataforma quase não vincula</h3>'+
+      '<p style="font-size:.9rem">O artefato é portável por desenho: o mesmo pacote de implantação roda em qualquer Kubernetes gerenciado. A pergunta encolhe para <b>onde fica o cluster</b>, respondida por <b>gravidade do dado</b> e <b>residência</b>. As demais dimensões não discriminam.</p>'+
+      '<div class="fields" style="margin-top:.8rem"><label class="fld">Onde fica o cluster<input type="text" id="f-cloud" placeholder="ex.: nuvem X, região Y" value="'+esc(S.cloud)+'"></label></div></div>';
+  } else if(tv==="G"){
+    ob.innerHTML = '<div class="panel"><h3>Onde roda — a plataforma é a decisão</h3>'+
+      '<p style="font-size:.9rem">O agente é cidadão da plataforma escolhida e a troca posterior é reconstrução. Pesam, nesta ordem: <b>gravidade do dado</b> (onde estão os sistemas de registro), <b>identidade corporativa</b>, <b>superfície de consumo</b> (onde o usuário já está), <b>modelo de controle</b> (o que a plataforma permite governar) e <b>residência</b>.</p>'+
+      '<div class="fields" style="margin-top:.8rem"><label class="fld">Plataforma primária<input type="text" id="f-cloud" placeholder="plataforma escolhida" value="'+esc(S.cloud)+'"></label></div></div>';
+  } else {
+    ob.innerHTML = "";
+  }
+  var ci = $("f-cloud");
+  if(ci) ci.addEventListener("input",function(){S.cloud=ci.value;record()});
+
+  setCell("v-level", lvl===null?"—":LADDER[lvl].lv+" "+LADDER[lvl].nm, lvl!==null&&lvl<3?"simple":(lvl!==null?"on":""));
+  setCell("v-cost", lvl===null?"—":LADDER[lvl].cx, "");
+  setCell("v-via", (lvl===null||lvl<3)?"n/a":(T.v==="conflito"?"conflito":tv==="A"?"Aberta":tv==="G"?"Gerenciada":"—"), T.v==="conflito"?"bad":"");
+  var tot = renderDebts();
+  setCell("v-debt", String(tot), tot?"bad":"simple");
+  record();
+}
+function setCell(id,val,cls){
+  var el=$(id); el.className="vcell"+(cls?" "+cls:""); el.querySelector(".v").textContent=val;
+}
+
+function record(){
+  var L=levelOf(), lvl=L.n, T=viaOf(), incs=keysOf(S.inc), A=allDebts();
+  var tv=(T.v||"").indexOf("G")===0?"G":T.v==="A"?"A":null;
+  var d=$("f-demanda").value||"<demanda>", p=$("f-ppm").value||"<id>";
+  var ar=$("f-arq").value||"<nome>", sq=$("f-equipe").value||"<equipe>";
+  var today=new Date().toISOString().slice(0,10);
+  var L1=[];
+  L1.push("TRIAGEM AGÊNTICA — "+d+" ("+p+")");
+  L1.push("Data: "+today+"    Arquiteto: "+ar+"    Equipe: "+sq);
+  L1.push("");
+  L1.push("GATE A — NÍVEL");
+  L1.push("  Recomendado: "+(lvl===null?"—":LADDER[lvl].lv+" — "+LADDER[lvl].nm));
+  L1.push("  Pisos acionados: "+(L.pisos.join(", ")||"nenhum"));
+  L1.push("  Custo relativo estimado: "+(lvl===null?"—":LADDER[lvl].cx+" L1 (ordem de grandeza)"));
+  L1.push("  Fronteira preparada: "+(L.front?"SIM — exige contrato publicado e registro em catálogo desde o início":"não"));
+  L1.push("  Incompatibilidades marcadas: "+(incs.join(", ")||"nenhuma"));
+  L1.push("");
+  L1.push("GATE B — VIA DE CONSTRUÇÃO");
+  if(lvl===null||lvl<3){
+    L1.push("  Não se aplica — o Gate A não indicou agente.");
+  } else {
+    L1.push("  Veredito: "+(T.v==="conflito"?"REQUISITOS INCOMPATÍVEIS — demanda não executável como está"
+      :T.v==="A"?"Via aberta (código próprio em contêineres)"
+      :T.v==="G-cinza"?"Via gerenciada (zona cinza, com regra de promoção)"
+      :T.v==="G"?"Via gerenciada (runtime do fornecedor)":"—"));
+    L1.push("  Eliminatórias acionadas: "+([].concat(T.e2,T.e1).join(", ")||"nenhuma"));
+    L1.push("  Saldo de discriminadores: "+(T.saldo===null?"não aplicado":(T.saldo>0?"+":"")+T.saldo));
+    if(tv==="G") L1.push("  Gatilhos de promoção: volume / ciclo-checkpoint / 2º consumidor em outra plataforma / avaliação nativa insuficiente / modelo fora do catálogo");
+    if(tv==="A"){ L1.push("  Onde fica o cluster: "+(S.cloud||"<definir>")+"  (determinantes: gravidade do dado, residência)"); }
+    else if(tv==="G"){ L1.push("  Plataforma primária: "+(S.cloud||"<definir>")+"  (determinantes: gravidade do dado, identidade, superfície de consumo, modelo de controle)"); }
+    L1.push("  Nota: gateway de modelos, observabilidade de LLM e gestão de custo de inferência raramente vêm prontos de qualquer nuvem.");
+  }
+  L1.push("");
+  if(A.deb.length){
+    L1.push("DÉBITOS ABERTOS");
+    A.deb.forEach(function(x){
+      L1.push("  · "+x.src+" — "+x.t);
+      L1.push("    Por que: "+x.why);
+      L1.push("    O que fecha: "+x.fix);
+    });
+    L1.push("");
+  }
+  L1.push("SOBREPOSIÇÃO");
+  L1.push("  A equipe seguiu diferente do veredito? "+($("f-ovr").value==="sim"?"SIM":"não"));
+  if($("f-ovr").value==="sim") L1.push("  "+($("f-ovrwhy").value||"<nível e via adotados, e justificativa>").split("\n").join("\n  "));
+  L1.push("");
+  L1.push("REVISÃO: na próxima revisão de arquitetura da demanda");
+  $("record").textContent = L1.join("\n");
+}
+
+document.addEventListener("change",function(e){
+  var t=e.target; if(!t.name && t.type!=="checkbox" && t.tagName!=="SELECT") return;
+  if(t.name && t.name.indexOf("q-")===0){ S.a[t.name.slice(2)]=t.value; }
+  else if(t.name && t.name.indexOf("d-")===0){ S.t[t.name.slice(2)]=parseInt(t.value,10); }
+  else if(t.type==="checkbox"){
+    var id=t.value;
+    if(INC.some(function(x){return x.id===id})) S.inc[id]=t.checked;
+    else if(E2.some(function(x){return x.id===id})) S.e2[id]=t.checked;
+    else if(E1L.some(function(x){return x.id===id})) S.e1[id]=t.checked;
+  }
+  else if(t.id==="f-ovr"){ S.ovr=t.value; $("ovr-wrap").hidden = t.value!=="sim"; }
+  paint(); save();
+});
+["f-demanda","f-ppm","f-arq","f-equipe","f-ovrwhy"].forEach(function(id){
+  $(id).addEventListener("input",function(){record();save()});
+});
+
+function apply(cfg){
+  S={a:{},inc:{},e2:{},e1:{},t:{},cloud:cfg.cloud||"",ovr:"nao"};
+  QS.forEach(function(q){
+    var v=cfg.a[q.id]; S.a[q.id]=v||undefined;
+    q.opts.forEach(function(o){ var el=$("q-"+q.id+"-"+o[0]); if(el) el.checked = (v===o[0]); });
+  });
+  [[INC,"inc",cfg.inc],[E2,"e2",cfg.e2],[E1L,"e1",cfg.e1]].forEach(function(g){
+    g[0].forEach(function(it){
+      var on=(g[2]||[]).indexOf(it.id)>=0; S[g[1]][it.id]=on;
+      var el=$("c-"+it.id); if(el) el.checked=on;
+    });
+  });
+  DISC.forEach(function(d){
+    var v=(cfg.t||{})[d.id];
+    S.t[d.id]= (v===undefined?undefined:v);
+    ["m","n","p"].forEach(function(s,i){ var el=$("d-"+d.id+"-"+s); if(el) el.checked = (v===[-1,0,1][i]); });
+  });
+  var f=cfg.f||{};
+  $("f-demanda").value=f.demanda||""; $("f-ppm").value=f.ppm||"";
+  $("f-arq").value=f.arq||""; $("f-equipe").value=f.equipe||"";
+  $("f-ovr").value="nao"; $("f-ovrwhy").value=""; $("ovr-wrap").hidden=true;
+  paint(); save();
+}
+var VAZIO = {a:{},inc:[],e2:[],e1:[],t:{},f:{},cloud:""};
+function carregarExemplo(){ apply(EXAMPLE); toast("Exemplo carregado"); }
+$("load-ex").addEventListener("click",carregarExemplo);
+$("load-ex-top").addEventListener("click",function(){
+  carregarExemplo();
+  var g=document.getElementsByClassName("gate")[2];
+  if(g&&g.getBoundingClientRect){
+    var rail=$("rail"), off=(rail&&rail.getBoundingClientRect?rail.getBoundingClientRect().height:0)+10;
+    window.scrollTo({top:g.getBoundingClientRect().top+window.pageYOffset-off,behavior:"smooth"});
+  }
+});
+$("clear").addEventListener("click",function(){apply(VAZIO);toast("Limpo")});
+
+function toast(m){var t=$("toast");t.textContent=m;t.hidden=false;setTimeout(function(){t.hidden=true},2200)}
+$("copy").addEventListener("click",function(){
+  var txt=$("record").textContent;
+  try{ navigator.clipboard.writeText(txt).then(function(){toast("Registro copiado")},function(){selectRecord()}); }
+  catch(e){ selectRecord(); }
+});
+function selectRecord(){
+  var r=$("record"),sel=window.getSelection(),rg=document.createRange();
+  rg.selectNodeContents(r);sel.removeAllRanges();sel.addRange(rg);
+  toast("Selecionado — copie com Ctrl/Cmd+C");
+}
+
+function goDebts(){
+  var el=$("dsec"); if(!el||!el.getBoundingClientRect) return;
+  var rail=$("rail"), off=(rail&&rail.getBoundingClientRect?rail.getBoundingClientRect().height:0)+10;
+  window.scrollTo({top:el.getBoundingClientRect().top+window.pageYOffset-off,behavior:"smooth"});
+}
+$("v-debt").setAttribute("role","button");
+$("v-debt").setAttribute("tabindex","0");
+$("v-debt").setAttribute("title","Ver os débitos");
+$("v-debt").addEventListener("click",goDebts);
+$("v-debt").addEventListener("keydown",function(e){
+  if(e.key==="Enter"||e.key===" "){ e.preventDefault(); goDebts(); }
+});
+
+function save(){
+  try{ localStorage.setItem("triagem-pub-v1",JSON.stringify({
+    a:S.a,inc:S.inc,e2:S.e2,e1:S.e1,t:S.t,cloud:S.cloud,
+    f:{demanda:$("f-demanda").value,ppm:$("f-ppm").value,arq:$("f-arq").value,equipe:$("f-equipe").value},
+    ovr:$("f-ovr").value,ovrwhy:$("f-ovrwhy").value
+  })); }catch(e){}
+}
+function load(){
+  try{
+    var raw=localStorage.getItem("triagem-pub-v1"); if(!raw) return false;
+    var o=JSON.parse(raw);
+    apply({a:o.a||{},inc:keysOf(o.inc||{}),e2:keysOf(o.e2||{}),e1:keysOf(o.e1||{}),t:o.t||{},f:o.f||{},cloud:o.cloud||""});
+    if(o.ovr==="sim"){$("f-ovr").value="sim";$("ovr-wrap").hidden=false;$("f-ovrwhy").value=o.ovrwhy||"";}
+    record(); return true;
+  }catch(e){ return false; }
+}
+if(!load()) apply(VAZIO);
+</script>
+</body>
+</html>
